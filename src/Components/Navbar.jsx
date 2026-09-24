@@ -15,6 +15,8 @@ function Navbar() {
       <Link to="/projects">Projects</Link>
 
       <Link to="/contact">Contact</Link>
+
+      <Link to="/tasks">Task manager</Link>
     </nav>
   );
 }
