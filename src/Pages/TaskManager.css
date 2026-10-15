@@ -17,36 +17,103 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+.task-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.user-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.user-email-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #3b4244;
+  background: #eae3d2;
+  border: 1px solid #dcd3be;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+.user-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  display: inline-block;
+}
+.action-pill-button {
+  background: #ffffff;
+  border: 1px solid #d4c8b5;
+  color: #3a4244;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.action-pill-button:hover {
+  background: #f1ede3;
+  border-color: #baaa93;
+}
+.signout-button {
+  background: transparent;
+  border: 1px solid #e27a69;
+  color: #bf4b36;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.signout-button:hover {
+  background: #bf4b36;
+  color: #ffffff;
+}
 .task-heading {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
+  gap: 32px;
+  flex-wrap: wrap;
 }
 .task-heading-copy {
-  min-width: 0;
+  flex: 1 1 360px;
+  min-width: 280px;
 }
-.task-heading-actions {
+.task-heading-metrics {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
+  gap: 16px;
   flex-shrink: 0;
 }
 .task-heading h1 {
-  margin: 12px 0 4px;
+  margin: 12px 0 6px;
   color: #252a2b;
   font-family: Georgia, serif;
-  font-size: clamp(40px, 7vw, 76px);
+  font-size: clamp(38px, 6vw, 68px);
   letter-spacing: 0;
-  line-height: 0.95;
+  line-height: 1;
 }
 .task-heading p {
   color: #667073;
   font-size: 17px;
+  margin: 0;
 }
 .task-count {
   display: grid;
   min-width: 112px;
-  padding: 14px 0 4px 18px;
+  padding: 10px 0 4px 18px;
   border-left: 2px solid #d8cec0;
 }
 .task-count strong {
@@ -66,17 +133,13 @@
 .session-count {
   display: grid;
   min-width: 148px;
-  padding: 14px 0 4px 18px;
+  padding: 10px 0 4px 18px;
   border-left: 2px solid #d8cec0;
 }
 .session-count strong {
   color: #2e6f68;
   font: 26px Georgia, serif;
   letter-spacing: 1px;
-}
-.task-heading-actions .text-button {
-  margin: 0 0 7px 20px;
-  white-space: nowrap;
 }
 .task-layout {
   display: grid;

@@ -1,3 +1,10 @@
+.route-loading {
+  min-height: 40vh;
+  display: grid;
+  place-items: center;
+  color: #667073;
+  font-size: 15px;
+}
 .counter {
   font-size: 16px;
   padding: 5px 10px;

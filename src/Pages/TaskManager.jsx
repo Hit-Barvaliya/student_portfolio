@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   createTaskApi,
   deleteTaskApi,
+  fetchMeApi,
   fetchTasks,
+  generateAiDescriptionApi,
   getAuthToken,
   loginApi,
   registerApi,
@@ -11,6 +13,8 @@ import {
   updateTaskApi,
 } from "../api";
 import "./TaskManager.css";
+
+const TaskAnalyticsChart = lazy(() => import("../Components/TaskAnalyticsChart"));
 
 const emptyTask = {
   title: "",
@@ -46,8 +50,10 @@ function formatSessionTime(milliseconds) {
 
 function TaskManager() {
   const [token, setToken] = useState(getAuthToken);
+  const [currentUser, setCurrentUser] = useState(null);
   const [sessionRemaining, setSessionRemaining] = useState(0);
   const [tasks, setTasks] = useState([]);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [form, setForm] = useState(emptyTask);
   const [editingId, setEditingId] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -55,6 +61,8 @@ function TaskManager() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
   const [authMode, setAuthMode] = useState("login");
   const [authForm, setAuthForm] = useState({ email: "", password: "" });
   const [authLoading, setAuthLoading] = useState(false);
@@ -73,11 +81,23 @@ function TaskManager() {
     }
   }
 
+  async function loadCurrentUser() {
+    try {
+      const data = await fetchMeApi();
+      if (data.success && data.user) {
+        setCurrentUser(data.user);
+      }
+    } catch {
+      // Ignored if /me is unavailable or token invalid
+    }
+  }
+
   useEffect(() => {
     const removeUnauthorizedHandler = setUnauthorizedHandler(logout);
 
     if (token) {
       loadTasks();
+      loadCurrentUser();
       const expiry = getTokenExpiry(token);
       const updateSessionRemaining = () => {
         const remaining = expiry ? Math.max(0, expiry - Date.now()) : 0;
@@ -93,6 +113,7 @@ function TaskManager() {
       };
     } else {
       setLoading(false);
+      setCurrentUser(null);
       setSessionRemaining(0);
       return removeUnauthorizedHandler;
     }
@@ -117,6 +138,9 @@ function TaskManager() {
       const data = await loginApi(authForm);
       setAuthToken(data.token);
       setToken(data.token);
+      if (data.user) {
+        setCurrentUser(data.user);
+      }
       setAuthForm({ email: "", password: "" });
     } catch (requestError) {
       setAuthError(requestError.message);
@@ -128,6 +152,7 @@ function TaskManager() {
   function logout() {
     setAuthToken(null);
     setToken(null);
+    setCurrentUser(null);
     setTasks([]);
     setError("");
   }
@@ -153,9 +178,38 @@ function TaskManager() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  async function handleGenerateAiDescription() {
+    if (!form.title.trim()) {
+      setAiMessage("Please enter a task title first before requesting an AI description.");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiMessage("");
+    try {
+      const result = await generateAiDescriptionApi(form.title);
+      if (result.description) {
+        setForm((prev) => ({
+          ...prev,
+          description: result.description,
+          priority: result.priority || prev.priority
+        }));
+        setAiMessage(result.disclaimer || "AI suggestion generated. Review and modify before saving.");
+      } else {
+        setAiMessage("Could not generate a description. You can enter one manually.");
+      }
+    } catch (err) {
+      setAiMessage(`AI notice: ${err.message || 'Service temporarily unavailable'}`);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function resetForm() {
     setForm(emptyTask);
     setEditingId(null);
+    setAiMessage("");
+    setAiLoading(false);
   }
 
   async function submitTask(event) {
@@ -257,13 +311,34 @@ function TaskManager() {
   return (
     <main className="task-page">
       <section className="task-intro">
-        <p className="eyebrow">Workspace / Operations</p>
+        <div className="task-top-bar">
+          <p className="eyebrow">Workspace / Operations</p>
+          <div className="user-controls">
+            {currentUser?.email && (
+              <span className="user-email-badge" title="Logged in user">
+                <span className="user-dot"></span>
+                {currentUser.email}
+              </span>
+            )}
+            <button
+              className="action-pill-button"
+              type="button"
+              onClick={() => setShowAnalytics((prev) => !prev)}
+            >
+              {showAnalytics ? "📊 Hide Analytics" : "📊 Show Analytics"}
+            </button>
+            <button className="signout-button" type="button" onClick={logout}>
+              Sign out
+            </button>
+          </div>
+        </div>
+
         <div className="task-heading">
           <div className="task-heading-copy">
             <h1>Task manager</h1>
             <p>Capture the work. Keep the momentum.</p>
           </div>
-          <div className="task-heading-actions">
+          <div className="task-heading-metrics">
             <div className="task-count">
               <strong>{tasks.length}</strong>
               <span>total tasks</span>
@@ -272,9 +347,6 @@ function TaskManager() {
               <strong>{formatSessionTime(sessionRemaining)}</strong>
               <span>session remaining</span>
             </div>
-            <button className="text-button" type="button" onClick={logout}>
-              Sign out
-            </button>
           </div>
         </div>
       </section>
@@ -295,6 +367,23 @@ function TaskManager() {
               required
             />
           </label>
+          <div className="ai-assist-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "4px 0 8px 0" }}>
+            <span style={{ fontSize: "0.82rem", color: "#64748b" }}>AI Assistant:</span>
+            <button
+              type="button"
+              className="text-button"
+              onClick={handleGenerateAiDescription}
+              disabled={aiLoading}
+              style={{ padding: "4px 10px", fontSize: "0.85rem", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+            >
+              {aiLoading ? "✨ Generating suggestion..." : "✨ Auto-generate with AI"}
+            </button>
+          </div>
+          {aiMessage && (
+            <div className="ai-disclaimer" role="status" style={{ fontSize: "0.82rem", color: "#334155", background: "#f8fafc", border: "1px solid #e2e8f0", padding: "8px 12px", borderRadius: "6px", marginBottom: "10px" }}>
+              💡 {aiMessage}
+            </div>
+          )}
           <label>
             Description *
             <textarea
@@ -350,6 +439,11 @@ function TaskManager() {
         </form>
 
         <div className="task-list-panel">
+          {showAnalytics && (
+            <Suspense fallback={<p className="empty-state">Loading analytics chart...</p>}>
+              <TaskAnalyticsChart tasks={tasks} />
+            </Suspense>
+          )}
           <div className="list-toolbar">
             <div>
               <span className="section-label">Your tasks</span>

@@ -60,6 +60,8 @@ export const loginApi = (credentials) => apiRequest('/auth/login', {
   body: JSON.stringify(credentials),
 });
 
+export const fetchMeApi = () => apiRequest('/auth/me');
+
 export const fetchTasks = () => apiRequest('/tasks');
 export const createTaskApi = (task) => apiRequest('/tasks', {
   method: 'POST',
@@ -71,4 +73,9 @@ export const updateTaskApi = (id, task) => apiRequest(`/tasks/${id}`, {
 });
 export const deleteTaskApi = (id) => apiRequest(`/tasks/${id}`, {
   method: 'DELETE',
+});
+
+export const generateAiDescriptionApi = (title) => apiRequest('/api/ai/generate-description', {
+  method: 'POST',
+  body: JSON.stringify({ title }),
 });

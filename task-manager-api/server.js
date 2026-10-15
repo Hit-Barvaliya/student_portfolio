@@ -7,8 +7,10 @@ const validateContentType = require('./backend/middleware/validateContenty.jsx')
 const errorHandler = require('./backend/middleware/errorhandler.jsx');
 const authRouter = require('./backend/router/authrouter.jsx');
 const taskRouter = require('./backend/router/taskrouter.jsx');
+const aiRouter = require('./backend/router/airouter.jsx');
 const { setMongoConnectionState } = require('./backend/controllers/taskController.jsx');
 const { setUserMongoConnectionState } = require('./backend/controllers/authController.jsx');
+require('./backend/listeners.js');
 
 dotenv.config();
 
@@ -23,6 +25,48 @@ app.use(validateContentType);
 app.use(express.json());
 app.use(authRouter);
 app.use(taskRouter);
+app.use(aiRouter);
+
+app.get('/', (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
+  res.status(200).json({
+    success: true,
+    name: 'Task Manager Backend API',
+    version: '1.0.0',
+    status: 'running',
+    database: isDbConnected ? 'connected (MongoDB)' : 'in-memory storage fallback',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: {
+        register: 'POST /auth/register',
+        login: 'POST /auth/login',
+        currentUser: 'GET /auth/me (Bearer token)'
+      },
+      tasks: {
+        list: 'GET /tasks (Bearer token)',
+        create: 'POST /tasks (Bearer token)',
+        getOne: 'GET /tasks/:id (Bearer token)',
+        update: 'PUT /tasks/:id (Bearer token)',
+        delete: 'DELETE /tasks/:id (Bearer token)',
+        cacheStats: 'GET /tasks/cache/stats (Bearer token)'
+      },
+      ai: {
+        generateDescription: 'POST /api/ai/generate-description'
+      },
+      health: 'GET /health'
+    }
+  });
+});
+
+app.get('/health', (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
+  res.status(200).json({
+    status: 'healthy',
+    uptimeSeconds: Math.floor(process.uptime()),
+    database: isDbConnected ? 'connected (MongoDB)' : 'in-memory fallback',
+    timestamp: new Date().toISOString()
+  });
+});
 
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Route not found' });

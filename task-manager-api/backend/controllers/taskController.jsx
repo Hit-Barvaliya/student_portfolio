@@ -1,4 +1,6 @@
 const { Task, memoryTasks, getNextMemoryTaskId } = require('../data/task');
+const { getCache, setCache, delCache, getStats } = require('../cache');
+const taskEvents = require('../events');
 
 let isMongoConnected = false;
 
@@ -21,12 +23,21 @@ function serializeTask(task) {
 }
 
 async function getTasks(req, res) {
-  if (isMongoConnected) {
-    const tasks = await Task.find().sort({ createdAt: -1 });
-    return res.status(200).json({ success: true, tasks: tasks.map(serializeTask) });
+  const cachedData = getCache('all_tasks');
+  if (cachedData) {
+    return res.status(200).json({ ...cachedData, cached: true });
   }
 
-  return res.status(200).json({ success: true, tasks: memoryTasks.map(serializeTask) });
+  let tasks;
+  if (isMongoConnected) {
+    tasks = await Task.find().sort({ createdAt: -1 });
+  } else {
+    tasks = memoryTasks;
+  }
+
+  const responsePayload = { success: true, tasks: tasks.map(serializeTask) };
+  setCache('all_tasks', responsePayload);
+  return res.status(200).json(responsePayload);
 }
 
 async function createTask(req, res) {
@@ -47,28 +58,43 @@ async function createTask(req, res) {
     updatedAt: new Date()
   };
 
+  let createdTask;
   if (isMongoConnected) {
     const task = await Task.create(taskData);
-    return res.status(201).json({ success: true, task: serializeTask(task) });
+    createdTask = serializeTask(task);
+  } else {
+    memoryTasks.push(taskData);
+    createdTask = serializeTask(taskData);
   }
 
-  memoryTasks.push(taskData);
-  return res.status(201).json({ success: true, task: serializeTask(taskData) });
+  delCache('all_tasks');
+  console.log(`[API] Response sent at ${new Date().toISOString()}`);
+  res.status(201).json({ success: true, task: createdTask });
+  taskEvents.emit('task-created', createdTask, req.user);
 }
 
 async function getTask(req, res) {
   const { id } = req.params;
+  const cacheKey = `task_${id}`;
+  const cached = getCache(cacheKey);
+  if (cached) {
+    return res.status(200).json({ ...cached, cached: true });
+  }
+
   const task = isMongoConnected
     ? await Task.findById(id)
     : memoryTasks.find((taskItem) => taskItem.id === id || taskItem._id?.toString?.() === id);
 
   if (!task) return res.status(404).json({ success: false, error: 'Task not found' });
-  return res.status(200).json({ success: true, task: serializeTask(task) });
+  const payload = { success: true, task: serializeTask(task) };
+  setCache(cacheKey, payload);
+  return res.status(200).json(payload);
 }
 
 async function updateTask(req, res) {
   const { id } = req.params;
 
+  let serializedUpdated;
   if (isMongoConnected) {
     const updatedTask = await Task.findByIdAndUpdate(
       id,
@@ -77,15 +103,19 @@ async function updateTask(req, res) {
     );
 
     if (!updatedTask) return res.status(404).json({ success: false, error: 'Task not found' });
-    return res.status(200).json({ success: true, task: serializeTask(updatedTask) });
+    serializedUpdated = serializeTask(updatedTask);
+  } else {
+    const taskIndex = memoryTasks.findIndex((task) => task.id === id || task._id?.toString?.() === id);
+    if (taskIndex === -1) return res.status(404).json({ success: false, error: 'Task not found' });
+
+    const updatedTask = { ...memoryTasks[taskIndex], ...req.body, id, updatedAt: new Date() };
+    memoryTasks[taskIndex] = updatedTask;
+    serializedUpdated = serializeTask(updatedTask);
   }
 
-  const taskIndex = memoryTasks.findIndex((task) => task.id === id || task._id?.toString?.() === id);
-  if (taskIndex === -1) return res.status(404).json({ success: false, error: 'Task not found' });
-
-  const updatedTask = { ...memoryTasks[taskIndex], ...req.body, id, updatedAt: new Date() };
-  memoryTasks[taskIndex] = updatedTask;
-  return res.status(200).json({ success: true, task: serializeTask(updatedTask) });
+  delCache('all_tasks');
+  delCache(`task_${id}`);
+  return res.status(200).json({ success: true, task: serializedUpdated });
 }
 
 async function deleteTask(req, res) {
@@ -94,14 +124,21 @@ async function deleteTask(req, res) {
   if (isMongoConnected) {
     const deletedTask = await Task.findByIdAndDelete(id);
     if (!deletedTask) return res.status(404).json({ success: false, error: 'Task not found' });
-    return res.status(200).json({ success: true, message: 'Task deleted successfully' });
+  } else {
+    const taskIndex = memoryTasks.findIndex((task) => task.id === id || task._id?.toString?.() === id);
+    if (taskIndex === -1) return res.status(404).json({ success: false, error: 'Task not found' });
+
+    memoryTasks.splice(taskIndex, 1);
   }
 
-  const taskIndex = memoryTasks.findIndex((task) => task.id === id || task._id?.toString?.() === id);
-  if (taskIndex === -1) return res.status(404).json({ success: false, error: 'Task not found' });
+  delCache('all_tasks');
+  delCache(`task_${id}`);
+  res.status(200).json({ success: true, message: 'Task deleted successfully' });
+  taskEvents.emit('task-deleted', id, req.user);
+}
 
-  memoryTasks.splice(taskIndex, 1);
-  return res.status(200).json({ success: true, message: 'Task deleted successfully' });
+async function getCacheStats(req, res) {
+  return res.status(200).json({ success: true, ...getStats() });
 }
 
 module.exports = {
@@ -109,6 +146,7 @@ module.exports = {
   deleteTask,
   getTask,
   getTasks,
+  getCacheStats,
   setMongoConnectionState,
   updateTask
 };

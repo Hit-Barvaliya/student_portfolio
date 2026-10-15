@@ -1,6 +1,7 @@
 const express = require('express');
-const { login, register } = require('../controllers/authController.jsx');
+const { login, register, getMe } = require('../controllers/authController.jsx');
 const { validateLogin, validateRegistration } = require('../middleware/validateRequest.jsx');
+const authenticate = require('../middleware/authenticate.jsx');
 
 const router = express.Router();
 
@@ -10,5 +11,7 @@ function asyncHandler(handler) {
 
 router.post('/auth/register', validateRegistration, asyncHandler(register));
 router.post('/auth/login', validateLogin, asyncHandler(login));
+router.get('/auth/me', authenticate, asyncHandler(getMe));
+router.get('/me', authenticate, asyncHandler(getMe));
 
 module.exports = router;

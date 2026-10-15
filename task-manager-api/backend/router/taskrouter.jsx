@@ -4,6 +4,7 @@ const {
   deleteTask,
   getTask,
   getTasks,
+  getCacheStats,
   updateTask
 } = require('../controllers/taskController.jsx');
 const validateTaskId = require('../middleware/validatetask.jsx');
@@ -18,6 +19,8 @@ function asyncHandler(handler) {
 
 router.use('/tasks', authenticate);
 
+router.get('/cache/stats', authenticate, asyncHandler(getCacheStats));
+router.get('/tasks/cache/stats', asyncHandler(getCacheStats));
 router.get('/tasks', asyncHandler(getTasks));
 router.post('/tasks', validateTaskPayload, asyncHandler(createTask));
 router.get('/tasks/:id', validateTaskId, asyncHandler(getTask));

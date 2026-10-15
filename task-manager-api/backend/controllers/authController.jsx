@@ -61,4 +61,17 @@ async function login(req, res) {
   });
 }
 
-module.exports = { login, register, setUserMongoConnectionState };
+async function getMe(req, res) {
+  const userId = req.user.id;
+  const user = isMongoConnected
+    ? await User.findById(userId)
+    : memoryUsers.find((userItem) => userItem.id === userId || userItem._id === userId);
+
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+
+  return res.status(200).json({ success: true, user: serializeUser(user) });
+}
+
+module.exports = { login, register, getMe, setUserMongoConnectionState };
