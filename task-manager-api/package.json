@@ -1,11 +1,13 @@
 {
   "name": "task-manager-api",
   "version": "1.0.0",
-  "description": "",
+  "description": "Task Manager Backend API with In-Memory Caching and Event Processing",
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "benchmark:cache": "node benchmark-cache.js",
+    "demo:events": "node demo-events.js"
   },
   "keywords": [],
   "author": "",
