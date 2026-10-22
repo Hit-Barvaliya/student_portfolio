@@ -5,7 +5,7 @@
  */
 
 const { app } = require('./server');
-const { flushAll, resetStats, getStats } = require('./backend/cache');
+const { flushAll, getStats } = require('./backend/cache');
 
 async function runBenchmark() {
   const server = app.listen(0);
@@ -72,7 +72,7 @@ async function runBenchmark() {
       const t2 = performance.now();
       const cachedRes = await fetch(`${baseUrl}/tasks`, { headers });
       const t3 = performance.now();
-      const cachedJson = await cachedRes.json();
+      await cachedRes.json();
       const cachedDuration = Number((t3 - t2).toFixed(3));
       cachedTimes.push(cachedDuration);
     }

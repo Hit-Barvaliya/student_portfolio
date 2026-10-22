@@ -93,3 +93,35 @@ The GitHub Actions workflow is located at `.github/workflows/ci.yml`. It runs au
 ### Demonstrating Pipeline Pass and Fail:
 - **Pass State:** When code complies with linter rules and all 15 tests pass, both `lint` and `test` jobs display green checkmarks.
 - **Fail State:** If an assertion is broken (e.g. altering status code check in `server.test.js` from `200` to `500`), GitHub Actions halts execution at the failing step, prevents merging, and highlights the failed test in the CI log.
+
+---
+
+## AI API Integration & Responsible AI (Practical 13)
+
+The application integrates an AI-powered assistant for task description and priority recommendation.
+
+### Architecture:
+```
+React Frontend (TaskManager.jsx)
+   │  "Auto-generate with AI" button clicked
+   ▼
+Express Backend Route: POST /api/ai/generate-description
+   │  API key securely isolated in backend .env (never exposed to client)
+   ▼
+OpenAI (gpt-4o-mini) / Google Gemini API
+   │
+   ├─► Success: Parses response → Returns suggested description & priority → Displays in editable form
+   └─► Failure / No Key / Timeout: Graceful fallback engine activates → Returns contextual suggestion
+```
+
+### Key Technical Features:
+1. **Server-Side API Key Isolation:**
+   API keys (`OPENAI_API_KEY` or `GEMINI_API_KEY`) remain strictly on the backend inside `.env`. Keys are ignored by `.gitignore` and `.dockerignore`, preventing leaks into frontend bundles or Git history.
+2. **Graceful Degradation:**
+   If the external AI provider is offline, rate-limited, or has no API key configured, the backend catches the error and generates a contextual heuristic fallback (`generateLocalFallback`). The application continues running without disruption.
+3. **Rate Limiting:**
+   A built-in per-client rate limiter prevents excessive API calls and quotas by throttling requests within a rolling time window, returning HTTP `429 Too Many Requests`.
+4. **Editable Suggestions & Responsible AI Disclaimer:**
+   AI-generated content is loaded directly into editable inputs so the user retains full editorial control before saving. A prominent UI banner indicates: `AI-generated suggestion. Please review and modify before saving.`
+5. **Data Privacy Governance:**
+   Only the task title string is sent to the AI endpoint; no passwords, user IDs, or sensitive personal data are ever forwarded to third-party models.
