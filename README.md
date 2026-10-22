@@ -1,6 +1,6 @@
 # Full-Stack Task Management & Student Portfolio
 
-![CI Pipeline](https://github.com/Hit-Barvaliya/student-portfolio/actions/workflows/ci.yml/badge.svg)
+[![CI Pipeline](https://github.com/Hit-Barvaliya/student_portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/Hit-Barvaliya/student_portfolio/actions/workflows/ci.yml)
 
 Advanced Web Development Frameworks (ITUE301) — Laboratory Practicals.
 
@@ -78,3 +78,18 @@ Uses Node.js native `EventEmitter` (`events.js` and `listeners.js`) to decouple 
 ## CI/CD Pipeline (Practical 12)
 
 The GitHub Actions workflow is located at `.github/workflows/ci.yml`. It runs automatically on push and pull requests to `main` and `master`, executing linting (`oxlint`) and the automated test suite.
+
+### Workflow Architecture:
+1. **Trigger:** `push` and `pull_request` on `[main, master]` branches.
+2. **Job 1 (`lint`):** Code quality gate running `oxlint` across JavaScript and React JSX files.
+3. **Job 2 (`test`):** Depends on `lint` succeeding (`needs: lint`), provisions Node.js 18 on `ubuntu-latest`, installs root and backend dependencies, and executes the 15-assertion automated test suite covering:
+   - User authentication and JWT verification
+   - Task CRUD lifecycle operations
+   - Input validation and 400 Bad Request error handlers
+   - In-memory caching, cache hits, misses, and write invalidation
+   - Non-blocking asynchronous EventEmitter processing
+   - AI assistant controller validation, rate-limiting, and graceful degradation
+
+### Demonstrating Pipeline Pass and Fail:
+- **Pass State:** When code complies with linter rules and all 15 tests pass, both `lint` and `test` jobs display green checkmarks.
+- **Fail State:** If an assertion is broken (e.g. altering status code check in `server.test.js` from `200` to `500`), GitHub Actions halts execution at the failing step, prevents merging, and highlights the failed test in the CI log.
