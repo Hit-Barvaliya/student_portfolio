@@ -1,6 +1,11 @@
 const taskEvents = require('./events');
 
 const notificationLogs = [];
+let simulatedDelayMs = 0;
+
+function setSimulatedDelay(ms) {
+  simulatedDelayMs = ms;
+}
 
 function registerListeners() {
   // Error listener to catch and log any errors thrown in event handlers
@@ -14,10 +19,12 @@ function registerListeners() {
     console.error(`[Error Listener] Handled error in background listener: ${err.message}`);
   });
 
-  // Task created listener (asynchronous background processing)
+  // Task created listener (asynchronous non-blocking background processing)
   taskEvents.on('task-created', (task, user) => {
-    // Non-blocking asynchronous notification dispatch
-    setImmediate(() => {
+    const delay = simulatedDelayMs || 0;
+    const scheduleFn = delay > 0 ? (fn) => setTimeout(fn, delay) : setImmediate;
+
+    scheduleFn(() => {
       try {
         const assignedUser = user?.email || user?.id || 'unassigned';
         const timestamp = new Date().toISOString();
@@ -29,7 +36,7 @@ function registerListeners() {
           timestamp
         };
         notificationLogs.push(logEntry);
-        console.log(`[Notification] Task "${task.title}" created at ${timestamp} for ${assignedUser}`);
+        console.log(`[Background Event] Notification for task "${task.title}" (ID: ${task.id}) processed at ${timestamp} for ${assignedUser}`);
       } catch (err) {
         taskEvents.emit('error', err);
       }
@@ -49,7 +56,7 @@ function registerListeners() {
           timestamp
         };
         notificationLogs.push(logEntry);
-        console.log(`[Notification] Task "${taskId}" deleted at ${timestamp} by ${userRef}`);
+        console.log(`[Background Event] Task "${taskId}" deletion notification processed at ${timestamp} by ${userRef}`);
       } catch (err) {
         taskEvents.emit('error', err);
       }
@@ -63,5 +70,6 @@ registerListeners();
 module.exports = {
   notificationLogs,
   getNotificationLogs: () => [...notificationLogs],
-  clearNotificationLogs: () => { notificationLogs.length = 0; }
+  clearNotificationLogs: () => { notificationLogs.length = 0; },
+  setSimulatedDelay
 };
